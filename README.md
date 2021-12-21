@@ -22,9 +22,29 @@ All the repositories are gathered in the [PlatformedTasks](https://github.com/Pl
     - [PLAS-tesk-api](https://github.com/PlatformedTasks/PLAS-tesk-api) from the [tesk-api](https://github.com/elixir-cloud-aai/tesk-api)
     - [PLAS-tesk-core](https://github.com/PlatformedTasks/PLAS-tesk-core) from the [tesk-core](https://github.com/elixir-cloud-aai/tesk-core)
 - [PLAS-charts](https://github.com/PlatformedTasks/PLAS-charts) which is a collection of the created Helm Charts:
-    - [horovod](link) TODO
-    - [spark](link) TODO
+    - horovod
+    - spark
     - and the already mentioned [PLAS-TESK](https://github.com/PlatformedTasks/PLAS-TESK)
 
 Also, all the used Docker images can be found at the following [DockerHub repository](https://hub.docker.com/u/platformedtasks)
 
+
+## Horovod Example
+
+As an example, this guide will demonstrate the deployment of a platformed-tasks based on the Horovod distributed deep learning tool.
+
+### Requirements
+- The PLAS-TESK-API up and running. Head over [here](https://github.com/PlatformedTasks/PLAS-TESK) for the related requirements and the steps for the deploy of the TESK-API through Helm.
+
+- The PLAS-CWL-TES installed, follow the [related documentation](https://github.com/PlatformedTasks/PLAS-cwl-tes).
+
+After all the configurations are set, we will submit the CWL Horovod example using cwl-tes:
+
+```shell
+python cwl-tes.py --remote-storage-url ftp://<ftp-server>/files/out --insecure --tes http://<k8s-plas-tesk-api> --leave-outputs tests/helm-horovod.cwl.yml tests/inputs.json
+```
+
+![plas-horovod-deployment](src/plas-horovod-deployment.png)
+
+The Figure shows the status of the Pods immediately after the end of a platformed-task that uses a Horovod platform made of two workers. 
+We can see the same random prefix (`task-5a80374a`) for all the Pods belonging to the same task. In particular, `task-5a80374a--1-k2ql8` is the taskmaster which initially deploys the input filer Pod (`task-5a80374a-inputs-filer--1-46snq`). The taskmaster installs the Horovod workers (`task-5a80374a-platform-horovod-{0,1}`) and the executor (`task-5a80374a-ex-00--1-62sg8`) that runs its tasks leveraging the Horovod workers. After the task completion, the taskmaster deletes the platform, that’s why the `Terminating` state, while the output Pod (`task-5a80374a-outputs-filer--1-rvnc2`) has saved the results on the appropriate volumes and is marked as `Completed`.
