@@ -44,7 +44,61 @@ After all the configurations are set, we will submit the CWL Horovod example usi
 python cwl-tes.py --remote-storage-url ftp://<ftp-server>/files/out --insecure --tes http://<k8s-plas-tesk-api> --leave-outputs tests/helm-horovod.cwl.yml tests/inputs.json
 ```
 
-![plas-horovod-deployment](src/plas-horovod-deployment.png)
+![plas-horovod-deployment](src/plas-horovod-deployment.jpg)
 
 The Figure shows the status of the Pods immediately after the end of a platformed-task that uses a Horovod platform made of two workers. 
 We can see the same random prefix (`task-5a80374a`) for all the Pods belonging to the same task. In particular, `task-5a80374a--1-k2ql8` is the taskmaster which initially deploys the input filer Pod (`task-5a80374a-inputs-filer--1-46snq`). The taskmaster installs the Horovod workers (`task-5a80374a-platform-horovod-{0,1}`) and the executor (`task-5a80374a-ex-00--1-62sg8`) that runs its tasks leveraging the Horovod workers. After the task completion, the taskmaster deletes the platform, that’s why the `Terminating` state, while the output Pod (`task-5a80374a-outputs-filer--1-rvnc2`) has saved the results on the appropriate volumes and is marked as `Completed`.
+
+The CWL horovod example is the following:
+
+```yaml
+#!/usr/bin/env cwl-runner
+cwlVersion: v1.0
+class: CommandLineTool
+doc: "helm horovod"
+requirements:
+  - class: HelmRequirement
+    chartRepo: "https://platformedtasks.github.io/PLAS-charts/charts"
+    chartVersion: "3.0.0"
+    chartName: "horovod"
+    executorImage: "platformedtasks/horovod:latest"
+
+inputs:
+  - id: train
+    type: File
+    doc: "original content"
+    inputBinding:
+      position: 1
+  - id: values
+    type: File
+
+outputs:
+  - id: output
+    type: stdout
+
+stdout: horovod
+
+baseCommand: ["python3"]
+arguments: ["/horovod/examples/horovod-executor.py", "mpirun -np 2 --mca orte_keep_fqdn_hostnames t --allow-run-as-root --display-map --tag-output --timestamp-output"]
+```
+
+As the input.json:
+
+
+```yaml
+{
+    "input": {
+        "class": "File",
+        "location": "ftp://<ftp-server>/files/input.txt"
+    },
+    "values": {
+        "class": "File",
+        "location": "ftp://<ftp-server>/files/horovod-values.yaml",
+        "TMconfig": true
+    },
+    "train": {
+        "class": "File",
+        "location": "ftp://<ftp-server>/files/train-easy.py"
+    }
+}
+```
