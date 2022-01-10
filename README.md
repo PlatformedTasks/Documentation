@@ -31,22 +31,23 @@ All the repositories are gathered in the [PlatformedTasks](https://github.com/Pl
 Also, all the used Docker images can be found at the following [DockerHub repository](https://hub.docker.com/u/platformedtasks).
 
 
-## Hands on example
+## Hands-on example
 ### Horovod
 You need a PLAS compatible testbet to test this example. 
-The [following guide](Step-by-Step.md) is a step by step reference to properly configure the testbed.
+The [following guide](Step-by-Step.md) is a step by step reference to properly configure a working testbed.
 
 Assuming a testbet up and running, with this example we will run an Horovod platfromed-task, a distributed deep learning tool, in a Kubernetes cluster.
 
 ### Steps
-First, let's define the platformed-task using a CWL file. 
+First, let's define the platformed-task using a CWL file. The CWL file of the example can be found in the [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes.git) repository as [`PLAS-cwl-tes/tests/helm-horovod.cwl.yml`](https://github.com/PlatformedTasks/PLAS-cwl-tes/blob/main/tests/helm-horovod.cwl.yml).
+
 The core difference introduced with PLAS is how the executor is deployed, instead of being just a single container, it is a container that can take advantage the distributed power of a platform deployed using Helm.
 
 In the following example we use the `HelmRequirement` class we have added to the CWL specification to install the `Horovod` chart using our repository, which can be reached [here](https://github.com/PlatformedTasks/PLAS-charts).
 The executor instead, uses a separate image identified by `executorImage`.
 
 Next, we have followed the standard CWL to define the remaining fields.
-In particular we have specified two input files `train` and `values`, both located in the [example](example/) directory. 
+In particular we have specified two input files `train` and `values`.
 The first one is the file passed to the Horovod workers to perform the training while the latter is used to tune the Horovod installation made using Helm.
 
 We have defined the output file and also the command the executor must execute.
@@ -54,7 +55,6 @@ We have defined the output file and also the command the executor must execute.
 Specifically it is a concatenation of the `baseCommand` with its `arguments` which, in this case, uses a python script present in the `executorImage` to pass a command to two Horvod workers.
 
 ```yaml
-# example/helm-horovod.cwl.yml
 cwlVersion: v1.0
 class: CommandLineTool
 doc: "helm horovod"
@@ -84,19 +84,15 @@ baseCommand: ["python3"]
 arguments: ["/horovod/examples/horovod-executor.py", "mpirun -np 2 --mca orte_keep_fqdn_hostnames t --allow-run-as-root --display-map --tag-output --timestamp-output"]
 ```
 
-To submit the CWL run the following command filled with the addresses of your FTP server and K8s endpoint:
+To submit the CWL run the following command filled with the addresses of your FTP server and K8s endpoint using [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes.git):
 
 ```shell
-python3 cwl-tes.py --remote-storage-url ftp://<ftp-server>/files/out --insecure --tes http://<k8s-plas-tesk-api> --leave-outputs example/helm-horovod.cwl.yml example/inputs.json
+python3 cwl-tes.py --remote-storage-url ftp://<ftp-server>/files/out --insecure --tes http://<k8s-plas-tesk-api> --leave-outputs example/helm-horovod.cwl.yml path/to/inputs.json
 ```
 
-The `example/inputs.json` gathers the input files defined in the CWL and can be seen below. 
-As a remark, the `values` files has the field `TMconfig` set as `true` as part of the PLAS implementation and it means that the related file is passed to the taskmaster as a configuration file for the Helm deployment.
-
-Indeed, the `train` file is not meant for the taskmaster, hence the absence of the related flag.
+The `inputs.json` gathers the input files defined in the CWL and can be found in [`PLAS-cwl-tes/tests/inputs.json`](https://github.com/PlatformedTasks/PLAS-cwl-tes/blob/main/tests/inputs.json). A snipped is shown below. 
 
 ```json
-# example/inputs.json
 {
     "values": {
         "class": "File",
@@ -109,6 +105,11 @@ Indeed, the `train` file is not meant for the taskmaster, hence the absence of t
     }
 }
 ```
+
+As a remark, the `values` files has the field `TMconfig` set as `true` as part of the PLAS implementation and it means that the related file is passed to the taskmaster as a configuration file for the Helm deployment.
+
+Indeed, the `train` file is not meant for the taskmaster, hence the absence of the related flag.
+
 
 ![plas-horovod-deployment](src/plas-horovod-deployment.jpg)
 
