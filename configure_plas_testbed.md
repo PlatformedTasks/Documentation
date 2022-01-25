@@ -2,7 +2,7 @@
 
 This guide is a step by step reference to properly configure a working PLAS compatible testbed:
 
-1. Install `kubectl` version >= v1.21
+1. A Kubernetes cluster with version >= v1.21
 2. Install an NFS provisioner. We have chosen the NFS Ganesha server as described in the [official guide](https://kubernetes.io/docs/concepts/storage/storage-classes/#nfs). In particular from the [GitHub repository](https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner) we have installed only the deployment with its relative RBAC (as the code below shows), while for the storage class will be installed using the Helm Chart of the TESK-API:
 
 ```console
@@ -20,7 +20,7 @@ rolebinding.rbac.authorization.k8s.io/leader-locking-nfs-provisioner created
 ```
 
 3. Install and configure an FTP server
-4. Install [Helm](https://helm.sh/docs/intro/install/)
+4. Install [Helm](https://helm.sh/docs/intro/install/) version >= 3
 5. Install [PLAS-TESK](https://github.com/PlatformedTasks/PLAS-TESK)
 6. Install [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes)
 
