@@ -47,7 +47,7 @@ In the following example we use the `HelmRequirement` class we have added to the
 The executor instead, uses a separate image identified by `executorImage`.
 
 Next, we have followed the standard CWL to define the remaining fields.
-In particular we have specified two input files `train` and `values`.
+In particular we have specified two input files `train` and `values`, both located in the tests directory in the tests directory in the [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes/tree/main/tests) GitHub repository. 
 The first one is the file passed to the Horovod workers to perform the training while the latter is used to tune the Horovod installation made using Helm.
 
 We have defined the output file and also the command the executor must execute.
@@ -55,6 +55,7 @@ We have defined the output file and also the command the executor must execute.
 Specifically it is a concatenation of the `baseCommand` with its `arguments`. In this case, the first argument is the python script called `horovod-executor.py` and located in the `executorImage` (`platformedtasks/horovod:latest`) and the second argument is the command that the executor will execute.
 
 ```yaml
+# tests/helm-horovod.cwl.yml
 cwlVersion: v1.0
 class: CommandLineTool
 doc: "helm horovod"
@@ -87,10 +88,13 @@ arguments: ["/horovod/examples/horovod-executor.py", "mpirun -np 2 --mca orte_ke
 To submit the CWL run the following command filled with the addresses of your FTP server and K8s endpoint using [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes.git):
 
 ```shell
-python3 cwl-tes.py --remote-storage-url ftp://<ftp-server>/files/out --insecure --tes http://<k8s-plas-tesk-api> --leave-outputs example/helm-horovod.cwl.yml path/to/inputs.json
+python3 cwl-tes.py --remote-storage-url ftp://<ftp-server>/files/out --insecure --tes http://<k8s-plas-tesk-api> --leave-outputs tests/helm-horovod.cwl.yml tests/inputs.json
 ```
 
-The `inputs.json` gathers the input files defined in the CWL and can be found in [`PLAS-cwl-tes/tests/inputs.json`](https://github.com/PlatformedTasks/PLAS-cwl-tes/blob/main/tests/inputs.json). A snipped is shown below. 
+The `tests/inputs.json` gathers the input files defined in the CWL and can be seen below. 
+As a remark, the `values` files has the field `TMconfig` set as `true` as part of the PLAS implementation and it means that the related file is passed to the taskmaster as a configuration file for the Helm deployment.
+
+Indeed, the `train` file is not meant for the taskmaster, hence the absence of the related flag.
 
 ```json
 {
@@ -115,3 +119,5 @@ Indeed, the `train` file is not meant for the taskmaster, hence the absence of t
 
 The Figure shows the status of the Pods immediately after the end of a platformed-task that uses a Horovod platform made of two workers. 
 We can see the same random prefix (`task-5a80374a`) for all the Pods belonging to the same task. In particular, `task-5a80374a--1-k2ql8` is the taskmaster which initially deploys the input filer Pod (`task-5a80374a-inputs-filer--1-46snq`). The taskmaster installs the Horovod workers (`task-5a80374a-platform-horovod-{0,1}`) and the executor (`task-5a80374a-ex-00--1-62sg8`) that runs its tasks leveraging the Horovod workers. After the task completion, the taskmaster deletes the platform, that’s why the `Terminating` state, while the output Pod (`task-5a80374a-outputs-filer--1-rvnc2`) has saved the results on the appropriate volumes and is marked as `Completed`.
+
+This software is supported by GÉANT Innovation Programme Project.
