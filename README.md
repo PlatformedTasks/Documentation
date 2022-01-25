@@ -34,7 +34,7 @@ Also, all the used Docker images can be found at the following [DockerHub reposi
 ## Hands-on example
 ### Horovod
 You need a PLAS compatible testbet to test this example. 
-The [following guide](Step-by-Step.md) is a step by step reference to properly configure a working testbed.
+The [following guide](configure_plas_testbed.md) is a step by step reference guide to properly configure a PLAS compatible testbed.
 
 Assuming a testbet up and running, with this example we will run an Horovod platfromed-task, a distributed deep learning tool, in a Kubernetes cluster.
 
@@ -52,7 +52,7 @@ The first one is the file passed to the Horovod workers to perform the training 
 
 We have defined the output file and also the command the executor must execute.
 
-Specifically it is a concatenation of the `baseCommand` with its `arguments` which, in this case, uses a python script present in the `executorImage` to pass a command to two Horvod workers.
+Specifically it is a concatenation of the `baseCommand` with its `arguments`. In this case, the first argument is the python script called `horovod-executor.py` and located in the `executorImage` (`platformedtasks/horovod:latest`) and the second argument is the command that the executor will execute.
 
 ```yaml
 cwlVersion: v1.0

@@ -1,6 +1,29 @@
+# Step by Step
+This is a step by step reference to properly configure a working PLAS compatible testbed.
 
-# Deploy the PLAS extension of GCF platform. 
-Abbiamo un cluster kubernetes locale, quindi come prima cosa dobbiamo installare un provisioner per gestire le PVC.
+### Kubernetes
+* Install a local Kubernetes cluster, for example using Kubeadm as described in the [official page](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
+* Install an NFS provisioner. We have chosen the NFS Ganesha server as described in the [official guide](https://kubernetes.io/docs/concepts/storage/storage-classes/#nfs). In particular from the [`kubernetes-sigs/nfs-ganesha-server-and-external-provisioner`](https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner) we have installed only the deployment and the relative rbac (using the code below), while for the storage class will be installed using the Helm Chart of the TESK-API:
+
+```console
+$ kubectl create -f deploy/kubernetes/deployment.yaml
+serviceaccount/nfs-provisioner created
+service "nfs-provisioner" created
+deployment "nfs-provisioner" created
+$ kubectl create -f deploy/kubernetes/rbac.yaml
+clusterrole.rbac.authorization.k8s.io/nfs-provisioner-runner created
+clusterrolebinding.rbac.authorization.k8s.io/run-nfs-provisioner created
+role.rbac.authorization.k8s.io/leader-locking-nfs-provisioner created
+rolebinding.rbac.authorization.k8s.io/leader-locking-nfs-provisioner created
+```
+
+* Install and configure the FTP server.
+* Install [Helm](https://helm.sh/docs/intro/install/)
+
+Clone the [PLAS-TESK](https://github.com/PlatformedTasks/PLAS-TESK) repository
+``` bash
+git clone git@github.com:PlatformedTasks/PLAS-TESK.git
+```
 
 ### TESK-API
 1. Dalla documentazione ufficiale di Kubernetes sulle storage class abbiamo scelto di utilizzare [NFS](https://kubernetes.io/docs/concepts/storage/storage-classes/#nfs), in particolare [NFS Ganesha server and external provisioner](https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner). Abbiamo creato:
