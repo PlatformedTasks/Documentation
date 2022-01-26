@@ -1,5 +1,7 @@
 # PLAS - Platformed Workflows (A GCF Extension)
 
+![](src/demo_horovod.gif)
+
 PLAS is a project funded by the [GÉANT Innovation Programme](https://community.geant.org/community-programme-portfolio/innovation-programme/) initiative to extend the [GÉANT Cloud Flow (GCF)](https://clouds.geant.org/community-cloud/) to be capable of performing platformed-tasks in the cloud.
 
 ## Introduction
