@@ -132,3 +132,5 @@ arguments: ["/horovod/examples/horovod-executor.py", "mpirun -np 2 --mca orte_ke
 ``` bash
 python cwl-tes.py --remote-storage-url ftp://10.0.0.10/files/out --insecure --tes http://10.0.0.10:31567 --leave-outputs tests/helm-horovod.cwl.yml tests/inputs.json
 ```
+## Demo
+![](demo_horovod.gif)
