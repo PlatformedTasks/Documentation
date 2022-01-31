@@ -135,7 +135,11 @@ Indeed, the `train` file is not meant for the taskmaster, hence the absence of t
     "train": {
         "class": "File",
         "location": "ftp://<ftp-server>/files/train-easy.py"
-    }
+    },
+    "spark_example": {
+        "class": "File",
+        "location": "ftp://<ftp-server>/files/spark_example.jar"
+    },
 }
 ```
 
