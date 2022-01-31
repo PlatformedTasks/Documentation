@@ -34,12 +34,13 @@ All the repositories are gathered in the [PlatformedTasks](https://github.com/Pl
 
 Also, all the used Docker images can be found at the following [DockerHub repository](https://hub.docker.com/u/platformedtasks).
 
-## Setup a PLAS compatible testbed
-
+## Setup a PLAS Compatible Testbed
 This is a step by step reference to properly configure a working PLAS compatible testbed:
 
 1. A Kubernetes cluster with version >= v1.21
-2. Install an NFS provisioner. We have chosen the NFS Ganesha server as described in the [official guide](https://kubernetes.io/docs/concepts/storage/storage-classes/#nfs). In particular from the [GitHub repository](https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner) we have installed only the deployment with its relative RBAC (as the code below shows), while for the storage class will be installed using the Helm Chart of the TESK-API:
+2. Install an NFS provisioner. 
+  We have chosen the NFS Ganesha server as described in the [official guide](https://kubernetes.io/docs/concepts/storage/storage-classes/#nfs). 
+  In particular from the [GitHub repository](https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner) we have installed only the deployment with its relative RBAC (as the code below shows), while for the storage class will be installed using the Helm Chart of the TESK-API:
 
 ```console
 $ git clone https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner.git
@@ -55,22 +56,17 @@ role.rbac.authorization.k8s.io/leader-locking-nfs-provisioner created
 rolebinding.rbac.authorization.k8s.io/leader-locking-nfs-provisioner created
 ```
 
-3. Install and configure an FTP server
-4. Install [Helm](https://helm.sh/docs/intro/install/) version >= 3
-5. Install [PLAS-TESK](https://github.com/PlatformedTasks/PLAS-TESK)
-6. Install [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes)
+1. Install and configure an FTP server
+2. Install [Helm](https://helm.sh/docs/intro/install/) version >= 3
+3. Install [PLAS-TESK](https://github.com/PlatformedTasks/PLAS-TESK)
+4. Install [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes)
 
 Now you should have a PLAS compatible testbed ready. Continue reading to try a PLAS example.
 
 
-## Hands-on example
-### Horovod
-You need a PLAS compatible testbet to test this example. 
-The [following guide](configure_plas_testbed.md) is a step by step reference guide to properly configure a PLAS compatible testbed.
-
-Assuming a testbet up and running, with this example we will run an Horovod platfromed-task, a distributed deep learning tool, in a Kubernetes cluster.
-
-### Steps
+## Hands-On Examples
+### Deploy a Platformed Task Using Horovod 
+#### 1. CWL Definition
 First, let's define the platformed-task using a CWL file. The CWL file of the example can be found in the [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes.git) repository as [`PLAS-cwl-tes/tests/helm-horovod.cwl.yml`](https://github.com/PlatformedTasks/PLAS-cwl-tes/blob/main/tests/helm-horovod.cwl.yml).
 
 The core difference introduced with PLAS is how the executor is deployed, instead of being just a single container, it is a container that can take advantage the distributed power of a platform deployed using Helm.
@@ -119,6 +115,7 @@ Specifically it is a concatenation of the `baseCommand` with its `arguments`. In
 
 To submit the CWL, run the following command filled with the addresses of your FTP server and K8s endpoint using [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes.git):
 
+#### 2. Submit the Platformed Task on Kubernetes
 ```shell
 python3 cwl-tes.py --remote-storage-url ftp://<ftp-server>/files/out --insecure --tes http://<k8s-plas-tesk-api> --leave-outputs tests/helm-horovod.cwl.yml tests/inputs.json
 ```
@@ -142,8 +139,57 @@ Indeed, the `train` file is not meant for the taskmaster, hence the absence of t
 }
 ```
 
-The Figure shows the status of the Pods immediately after the end of a platformed-task that uses a Horovod platform made of two workers. 
+The Figure shows the status of the Pods immediately after the end of a platformed-task that uses a Horovod platform made of two workers.
+
 ![plas-horovod-deployment](src/plas-horovod-deployment.jpg)
+
 We can see the same random prefix (`task-5a80374a`) for all the Pods belonging to the same task. In particular, `task-5a80374a--1-k2ql8` is the taskmaster which initially deploys the input filer Pod (`task-5a80374a-inputs-filer--1-46snq`). The taskmaster installs the Horovod workers (`task-5a80374a-platform-horovod-{0,1}`) and the executor (`task-5a80374a-ex-00--1-62sg8`) that runs its tasks leveraging the Horovod workers. After the task completion, the taskmaster deletes the platform, that’s why the `Terminating` state, while the output Pod (`task-5a80374a-outputs-filer--1-rvnc2`) has saved the results on the appropriate volumes and is marked as `Completed`.
 
-This software is supported by GÉANT Innovation Programme Project.
+
+### Deploy a Platformed Task Using Spark
+Now, we will deploy a platformed task using Apache Spark. 
+The procedure is the same as the one using Horovod.
+
+#### 1. CWL Definition
+First, let's define the CWL with the description of the platformed task in the CWL format.
+As for the Horovod version, the following CWL file can be found in the [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes.git) repository as [`PLAS-cwl-tes/tests/helm-spark.cwl.yml`](https://github.com/PlatformedTasks/PLAS-cwl-tes/blob/main/tests/helm-spark.cwl.yml):
+
+```yaml
+# tests/helm-spark.cwl.yml
+cwlVersion: v1.0
+class: CommandLineTool
+doc: "helm spark"
+requirements:
+  - class: HelmRequirement
+    chartRepo: "https://platformedtasks.github.io/PLAS-charts/charts"
+    chartVersion: "6.0.0"
+    chartName: "spark"
+    executorImage: "platformedtasks/spark:latest"
+
+inputs:
+  - id: spark_example
+    type: File
+    doc: "original content"
+    inputBinding:
+      position: 1
+
+outputs:
+  - id: output
+    type: stdout
+
+stdout: spark
+
+baseCommand: ["python3"]
+arguments: ["/opt/bitnami/spark/examples/spark-executor.py", "spark-submit --conf=spark.jars.ivy=/tmp/.ivy --class=org.apache.spark.examples.SparkPi --deploy-mode=cluster"]
+
+```
+
+#### 2. Submit the Platformed Task on Kubernetes
+Submit the CWL file to the CWL-TES to deploy it on the cluster:
+```shell
+python3 cwl-tes.py --remote-storage-url ftp://<ftp-server>/files/out --insecure --tes http://<k8s-plas-tesk-api> --leave-outputs tests/helm-spark.cwl.yml tests/inputs.json
+```
+
+The deployment of the platformed task can be visualized using the standard Kubernetes commands: `kubectl get pods`.
+
+![plas-horovod-deployment](src/plas-spark-deployment.jpg)
