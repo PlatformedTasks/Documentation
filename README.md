@@ -61,7 +61,7 @@ rolebinding.rbac.authorization.k8s.io/leader-locking-nfs-provisioner created
 3. Install [PLAS-TESK](https://github.com/PlatformedTasks/PLAS-TESK)
 4. Install [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes)
 
-Now you should have a PLAS compatible testbed ready. Continue reading to try a PLAS example.
+Now you should have a PLAS compatible testbed ready, continue reading to deploy an example [using Horovod](#deploy-a-platformed-task-using-horovod) or using [Apache Spark](#deploy-a-platformed-task-using-spark).
 
 
 ## Hands-On Examples
@@ -151,7 +151,7 @@ We can see the same random prefix (`task-5a80374a`) for all the Pods belonging t
 
 
 ### Deploy a Platformed Task Using Spark
-Now, we will deploy a platformed task using Apache Spark. 
+In this second example, we will deploy a platformed task using Apache Spark. 
 The procedure is the same as the one using Horovod.
 
 #### 1. CWL Definition
