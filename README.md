@@ -56,10 +56,28 @@ role.rbac.authorization.k8s.io/leader-locking-nfs-provisioner created
 rolebinding.rbac.authorization.k8s.io/leader-locking-nfs-provisioner created
 ```
 
-1. Install and configure an FTP server
-2. Install [Helm](https://helm.sh/docs/intro/install/) version >= 3
-3. Install [PLAS-TESK](https://github.com/PlatformedTasks/PLAS-TESK)
-4. Install [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes)
+3. Create a `PersistentVolumeClaim`, in our case it will be called `transfer-pvc` and the `StorageClassName`: `example-nfs`.
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: transfer-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: example-nfs
+  resources:
+    requests:
+      storage: 200Mi # choose a storage size
+EOF
+```
+
+4. Install and configure an FTP server. The configuration we have used for the tests is [the following](./fpt_config.md).
+4. Install [Helm](https://helm.sh/docs/intro/install/) version >= 3
+5. Install [PLAS-TESK](https://github.com/PlatformedTasks/PLAS-TESK)
+6. Install [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes)
 
 Now you should have a PLAS compatible testbed ready, continue reading to deploy an example [using Horovod](#deploy-a-platformed-task-using-horovod) or using [Apache Spark](#deploy-a-platformed-task-using-spark).
 
