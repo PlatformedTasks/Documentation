@@ -1,4 +1,4 @@
-# CWL-PLAS - Extension of CWL for running Platformed Tasks
+# CWL-PLAS : An extension of CWL for running Platformed Tasks
 
 <p align="center">
   <img src="src/demo_horovod.gif" alt="animated" />
