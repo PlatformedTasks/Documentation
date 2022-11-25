@@ -1,4 +1,4 @@
-# PLAS - Platformed Workflows (A GCF Extension)
+# CWL-PLAS - Extension of CWL for running Platformed Tasks
 
 <p align="center">
   <img src="src/demo_horovod.gif" alt="animated" />
@@ -17,9 +17,9 @@ To execute a containerized-task the TESK-API runs four Pods: a taskmaster Pod wi
 We implemented and tested the PLAS platformed-task extension.
 The software upgrades are the following:
 
-- We extended the CWL language with a new “HelmRequirement” class to allow the definition of the platform on which to execute platformed-tasks by means of Helm charts.
-- We modified the CWL-TES (client) so that the CWL language validator would accept the change and would correctly forward them to the new TESK-API.
-- We extended the TESK-API and its taskmaster to properly deploy the Helm platform and an Executor Pod that uses it for the task. Upon task completion the deployed components are terminated and removed.
+- We extended the [CWL Command Line Tool Description](https://www.commonwl.org/v1.0/CommandLineTool.html)  with a new “HelmRequirement” class to allow the definition of the `sidecar` platform described as Helm charts on which to execute platformed-tasks.
+- We modified the workflow manager [CWL-TES](https://github.com/ohsu-comp-bio/cwl-tes) so that its CWL language validator would accept the CWL schema change and would correctly interact with an extended [TESK](https://github.com/elixir-cloud-aai/TESK) execution service backend.
+- We extended the TESK-API and the Taskmaster of TESK-CORE to properly deploy the sidecar platform through Helm and an Executor Pod that uses the platform for the task process. Upon task completion the sidecar platform is terminated and removed.
 We successfully tested and made available the Helm charts and executors Docker images for platformed-tasks based on Horovod and Apache Spark that can be used for machine learning distributed training tasks.
 
 All the repositories are gathered in the [PlatformedTasks](https://github.com/PlatformedTasks) GitHub organization, and summarized as follows:
