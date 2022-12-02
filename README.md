@@ -4,7 +4,7 @@
   <img src="src/demo_horovod.gif" alt="animated" />
 </p>
 
-CWL-PLAS is a project funded by the [GÉANT Innovation Programme](https://community.geant.org/community-programme-portfolio/innovation-programme/) initiative to extend the [GÉANT Cloud Flow (GCF)](https://clouds.geant.org/community-cloud/) workflow execution platform based on CWL language to be capable of running platformed-tasks.
+CWL-PLAS is a project funded by the [GÉANT Innovation Programme](https://community.geant.org/community-programme-portfolio/innovation-programme/) initiative to extend the [GÉANT Cloud Flow (GCF)](https://clouds.geant.org/community-cloud/) workflow execution platform based on CWL language to be capable of running platformed-tasks. The proposed CWL specification extensions are named *CWL-PLAS*, the software in this repository that implement them is named *CWL-PLASK*.
 
 ## Introduction
 
@@ -23,8 +23,6 @@ The Taskmaster executes three Jobs: an input Job and an output Job to manage, re
 > **_Kubernetes Job_**: differently from a plain Kubernetes Pod that is intended to execute a long-term service, a Job is a Pod designed to reliably execute a short-term software program within a Container. When the program is completed, the Job terminates and Kubernetes keeps track of successful completions
  
 ## CWL-PLAS Specification Extension
-
-![PLAS-extension](src/plas.png)
 
 CWL-PLAS extends CWL by introducing the *platformed-task* model. A platformed task is a task whose execution is *accelerated* by a parallel computing sidecar platform. For example, a machine learning task can be assisted by a multi-container sidecar platform such as [Horovod](https://github.com/horovod) that parallelizes neural network training.  With CWL-PLAS, we move from a single-container-per-task model of the legacy CWL to a multi-container-per-task model.
 
@@ -65,6 +63,8 @@ For the case of `type: Helm` the `parameters` object is the following
 
 
 ## CWL-PLASK
+
+![PLAS-extension](src/plas.png)
 
 CWL-PLASK is an implementation of CWL-PLAS specification that uses a Kubernetes cluster as a cloud backend. It is an upgrade of the GCF architecture. Specifically, 
 
