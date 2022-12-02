@@ -1,9 +1,5 @@
 # CWL-PLAS : An extension of CWL for running Platformed Tasks
 
-<p align="center">
-  <img src="src/demo_horovod.gif" alt="animated" />
-</p>
-
 CWL-PLAS is a project funded by the [GÉANT Innovation Programme](https://community.geant.org/community-programme-portfolio/innovation-programme/) initiative to extend the [GÉANT Cloud Flow (GCF)](https://clouds.geant.org/community-cloud/) workflow execution platform based on CWL language to be capable of running platformed-tasks. The proposed CWL specification extensions are named *CWL-PLAS*, the software in this repository that implement them is named *CWL-PLASK*.
 
 ## Introduction
@@ -135,6 +131,11 @@ Now you should have a PLAS compatible testbed ready, continue reading to deploy 
 
 ## Hands-On Examples
 ### Run a Horovod accelerated Machine Learning Platformed-Task  
+
+<p align="center">
+  <img src="src/demo_horovod.gif" alt="animated" width="500" height="400"/>
+</p>
+
 #### 1. CWL Definition
 First, let's define the platformed-task using a .cwl file like the following [one](https://github.com/PlatformedTasks/PLAS-cwl-tes/blob/main/tests/helm-horovod.cwl.yml).
 
