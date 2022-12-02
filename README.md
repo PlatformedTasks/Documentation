@@ -4,23 +4,74 @@
   <img src="src/demo_horovod.gif" alt="animated" />
 </p>
 
-PLAS is a project funded by the [GÉANT Innovation Programme](https://community.geant.org/community-programme-portfolio/innovation-programme/) initiative to extend the [GÉANT Cloud Flow (GCF)](https://clouds.geant.org/community-cloud/) workflow execution platform based on CWL language to be capable of running platformed-tasks.
+CWL-PLAS is a project funded by the [GÉANT Innovation Programme](https://community.geant.org/community-programme-portfolio/innovation-programme/) initiative to extend the [GÉANT Cloud Flow (GCF)](https://clouds.geant.org/community-cloud/) workflow execution platform based on CWL language to be capable of running platformed-tasks.
 
 ## Introduction
 
-The architecture of the [GÉANT Cloud Flow (GCF)](https://clouds.geant.org/community-cloud/) platform consists of a [Workflow Execution Service (WES)](https://github.com/elixir-cloud-aai/cwl-WES) that receives as input a [CWL](https://github.com/common-workflow-language/common-workflow-language) file, selects the most convenient Container platform from those available, and finally forwards the CWL file to a [CWL Task Execution Service (CWL-TES)](https://github.com/ohsu-comp-bio/cwl-tes) that is running at the selected site. In turn, the CWL-TES transforms the CWL request into a JSON format and sends it to a [TES-API](https://github.com/ga4gh/task-execution-schemas) server. The TES-API leverages an underlying container platform to execute the containers of the tasks that make up the workflow. Therefore, the TES-API is a component whose implementation depends on the local container platform (e.g., Docker Swarm, Kubernetes, etc.). In this project we have considered Kubernetes and the related TES-API called [TESK](https://github.com/elixir-cloud-aai/TESK). 
+The architecture of the GCF conforms to the: 
+- Global Alliance for Genomics and Health (GA4GH) [Workflow Execution Service (WES) API](https://github.com/ga4gh/wiki/wiki/Workflow-Execution-Service)
+- Global Alliance for Genomics and Health (GA4GH) [Task Execution Service (WES) API](https://github.com/ga4gh/wiki/wiki/Task-Execution-Service)
+- Common Workflow Language [(CWL)](https://www.commonwl.org)
 
-To execute a containerized-task the TESK-API runs four Pods: a taskmaster Pod with orchestration roles, an Input and an Output Pods to manage, respectively, the input and output files of the task, and an Executor Pod that includes the container that is able to execute the PLAS task.
+The GCF architecture consists of a Workflow Execution Service (WES) implementation called [cwl-WES](https://github.com/elixir-cloud-aai/cwl-WES) that receives as input a .cwl file describing the workflow and manages its execution using an internal workflow manager called [cwl-TES](https://github.com/ohsu-comp-bio/cwl-tes). The cwl-TES workflow engine requests execution of the tasks that make up the workflow to a remote Task Execution Service (TES). 
+
+There are several implementations of a TES, and CWL-PLAS uses one called [TESK](https://github.com/elixir-cloud-aai/TESK) that leverages a Kubernetes cluster. The TESK architecture consists of a TESK-API server that receives requests from the upstream cwl-TES and distributes the Kubernetes resources needed to execute the task. 
+
+To execute a *legacy* task, TESK-API runs a Kubernetes Job (see note), named  `Taskmaster`, which orchestrates the execution of the task. 
+The Taskmaster executes three Jobs: an input Job and an output Job to manage, respectively, the input and output files of the task, and an execution Job that includes the container with the software running the task. The Jobs exchange files through a Task-Volume instantiated by the Taskmaster. When the Jobs finish, Kubernetes resources are released.
+
+> **_Kubernetes Job_**: differently from a plain Kubernetes Pod that is intended to execute a long-term service, a Job is a Pod designed to reliably execute a short-term software program within a Container. When the program is completed, the Job terminates and Kubernetes keeps track of successful completions
+ 
+## CWL-PLAS Specification Extension
 
 ![PLAS-extension](src/plas.png)
 
-We implemented and tested the PLAS platformed-task extension.
-The software upgrades are the following:
+CWL-PLAS extends CWL by introducing the *platformed-task* model. A platformed task is a task whose execution is *accelerated* by a parallel computing sidecar platform. For example, a machine learning task can be assisted by a multi-container sidecar platform such as [Horovod](https://github.com/horovod) that parallelizes neural network training.  With CWL-PLAS, we move from a single-container-per-task model of the legacy CWL to a multi-container-per-task model.
 
-- We extended the [CWL Command Line Tool Description](https://www.commonwl.org/v1.0/CommandLineTool.html)  with a new “HelmRequirement” class to allow the definition of the `sidecar` platform described as Helm charts on which to execute platformed-tasks.
-- We modified the workflow manager [CWL-TES](https://github.com/ohsu-comp-bio/cwl-tes) so that its CWL language validator would accept the CWL schema change and would correctly interact with an extended [TESK](https://github.com/elixir-cloud-aai/TESK) execution service backend.
-- We extended the TESK-API and the Taskmaster of TESK-CORE to properly deploy the sidecar platform through Helm and an Executor Pod that uses the platform for the task process. Upon task completion the sidecar platform is terminated and removed.
-We successfully tested and made available the Helm charts and executors Docker images for platformed-tasks based on Horovod and Apache Spark that can be used for machine learning distributed training tasks.
+Currently, CWL-PLAS considers sidecar platforms described by [Helm](https://helm.sh/) charts so that implementations using Kubernetes clusters can use Helm to install the sidecar platform along with other Kubernetes resources needed for the task.
+
+In terms of specifications, CWL-PLAS extends:
+- The [CWL Command Line Tool Description](https://www.commonwl.org/v1.0/CommandLineTool.html)
+- The [Task Execution Service (TES) APIs](https://github.com/ga4gh/wiki/wiki/Task-Execution-Service)
+
+### Extension of the CWL Command Line Tool Description
+CWL-PLAS introduces a new `HelmRequirement` that a CommandLineTool can list under `requirements`. The  `HelmRequirement` fields indicate that a task requires a sidecar Helm-based multi-container environment and specifies how to retrieve the related Helm platform.
+The command-line tool run to perform the task activity must be contained in a `Executor` Container, specified by the legacy `DockerRequirement`.
+
+| **field** | **required** | **type** | **value**                                                                           |
+|----------------|--------------|----------|--------------------------------------------------------------------------------|
+| class          | required     | string   | Always 'HelmRequirement'                                                       |
+| chartRepo      | required     | string   | URL of the Helm Repository of the platformchart                                |
+| chartName      | required     | string   | Name of the chart                                                              |
+| chartVersion   | required     | string   | Chart version                                                                  |
+| chartValues    | optional     | string   | URL of chart .yml  values (backend can ignore and use chart default)           |
+
+
+### Extension of the Task Execution Service (TES) APIs
+CWL-PLAS introduces a new possible property in the `tesExecutor`  object named `sidecar` that is an  object whose schema is the following:
+
+| **field**     | **required** | **type**    | **value**                                                                    |
+|---------------|--------------|-------------|------------------------------------------------------------------------------|
+| type          | required     | string      | Only 'Helm' corrently supported                                              |
+| parameters    | required     | JSON Object | parameters of the specific sidecar platform                                  |
+
+For the case of `type: Helm` the `parameters` object is the following
+
+| **field**     | **required** | **type** | **value**                                                                      |
+|---------------|--------------|----------|--------------------------------------------------------------------------------|
+| chartName     | required     | string   | Name of the chart                                                              |
+| chartVersion  | required     | string   | Chart version                                                                  |
+| chartValues   | optional     | string   | URL of chart .yml  values (backend can ignore and use chart default)           |                                                     |
+
+
+## CWL-PLASK
+
+CWL-PLASK is an implementation of CWL-PLAS specification that uses a Kubernetes cluster as a cloud backend. It is an upgrade of the GCF architecture. Specifically, 
+
+- a new workflow manager `cwl-TES`  that accepts the CWL-PLAS extensions to CWL language and TES API. 
+- a new `TESK-API` and `Taskmaster` of TESK-CORE to properly deploy the Executor Container and the sidecar platform through Helm. Upon task completion, the sidecar platform is terminated and removed. Therefore, the platform lifecicle is boud with those of the task.
+
+We successfully tested and made available the Helm charts and Executors Docker images for platformed-tasks based on Horovod and Apache Spark that can be used for machine learning distributed training tasks.
 
 All the repositories are gathered in the [PlatformedTasks](https://github.com/PlatformedTasks) GitHub organization, and summarized as follows:
 - [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes): the extension of the [cwl-tes](https://github.com/ohsu-comp-bio/cwl-tes)
@@ -34,8 +85,8 @@ All the repositories are gathered in the [PlatformedTasks](https://github.com/Pl
 
 Also, all the used Docker images can be found at the following [DockerHub repository](https://hub.docker.com/u/platformedtasks).
 
-## Setup a PLAS Compatible Testbed
-This is a step by step reference to properly configure a working PLAS compatible testbed:
+## Setup a CWL-PLASK testbed
+This is a step-by-step reference to properly configure a working CWL-PLASK testbed:
 
 1. A Kubernetes cluster with version >= v1.21
 2. Install an NFS provisioner. 
@@ -83,11 +134,9 @@ Now you should have a PLAS compatible testbed ready, continue reading to deploy 
 
 
 ## Hands-On Examples
-### Deploy a Platformed Task Using Horovod 
+### Run a Horovod accelerated Machine Learning Platformed-Task  
 #### 1. CWL Definition
-First, let's define the platformed-task using a CWL file. The CWL file of the example can be found in the [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes.git) repository as [`PLAS-cwl-tes/tests/helm-horovod.cwl.yml`](https://github.com/PlatformedTasks/PLAS-cwl-tes/blob/main/tests/helm-horovod.cwl.yml).
-
-The core difference introduced with PLAS is how the executor is deployed, instead of being just a single container, it is a container that can take advantage the distributed power of a platform deployed using Helm.
+First, let's define the platformed-task using a .cwl file like the following [one](https://github.com/PlatformedTasks/PLAS-cwl-tes/blob/main/tests/helm-horovod.cwl.yml).
 
 ```yaml
 # tests/helm-horovod.cwl.yml
@@ -95,20 +144,24 @@ cwlVersion: v1.0
 class: CommandLineTool
 doc: "helm horovod"
 requirements:
+  - class: DockerRequirement
+    dockerPull: "platformedtasks/horovod:latest"
   - class: HelmRequirement
     chartRepo: "https://platformedtasks.github.io/PLAS-charts/charts"
     chartName: "horovod"
     chartVersion: "3.0.0"
-    executorImage: "platformedtasks/horovod:latest"
 
 inputs:
-  - id: train
-    type: File
-    doc: "original content"
+  - id: np
+    type: int
+    doc: "number of processes"
     inputBinding:
       position: 1
-  - id: values
+  - id: train
     type: File
+    doc: "python training script"
+    inputBinding:
+      position: 2
 
 outputs:
   - id: output
@@ -117,76 +170,64 @@ outputs:
 stdout: horovod
 
 baseCommand: ["python3"]
-arguments: ["/horovod/examples/horovod-executor.py", "mpirun -np 2 --mca orte_keep_fqdn_hostnames t --allow-run-as-root --display-map --tag-output --timestamp-output"]
+arguments: ["/horovod/examples/horovod-exec.py"]
 ```
 
-In the following example we use the `HelmRequirement` class we have added to the CWL specification to install the `Horovod` chart using our repository, which can be reached [here](https://github.com/PlatformedTasks/PLAS-charts).
-The executor instead, uses a separate image specified by `executorImage` field.
+In this example, we use the `HelmRequirement` class to install the `Horovod` chart using our [repository](https://github.com/PlatformedTasks/PLAS-charts). The Executor Container instead, uses a separate image specified by `DockerRequirement` field.
 
-Next, we have defined two input `train` and `values`, which paths are specified by the [input.json](https://github.com/PlatformedTasks/PLAS-cwl-tes/tree/main/tests/inputs.json) file passed as argument in the CWL command as we can see below.
-
-The first one is the file passed to the Horovod workers to perform the training while the latter is used to tune the Horovod installation made using Helm.
-
-We have defined the output file and also the command the executor must execute.
-
-Specifically it is a concatenation of the `baseCommand` with its `arguments`. In this case, the first argument is the python script called `horovod-executor.py` and located in the `executorImage` (`platformedtasks/horovod:latest`) and the second argument is the command that the executor will execute.
-
-To submit the CWL, run the following command filled with the addresses of your FTP server and K8s endpoint using [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes.git):
-
-#### 2. Submit the Platformed Task on Kubernetes
-```shell
-python3 cwl-tes.py --remote-storage-url ftp://<ftp-server>/files/out --insecure --tes http://<k8s-plas-tesk-api> --leave-outputs tests/helm-horovod.cwl.yml tests/inputs.json
-```
-
-The `tests/inputs.json` gathers the input files defined in the CWL and can be seen below. 
-As a remark, the `values` files has the field `TMconfig` set as `true` as part of the PLAS implementation and it means that the related file is passed to the taskmaster as a configuration file for the Helm deployment.
-
-Indeed, the `train` file is not meant for the taskmaster, hence the absence of the related flag.
+Next, we have defined the input `train`, whose URI is specified by the following [input.json](https://github.com/PlatformedTasks/PLAS-cwl-tes/tree/main/tests/inputs.json) file.
 
 ```json
 {
-    "values": {
-        "class": "File",
-        "location": "ftp://<ftp-server>/files/horovod-values.yaml",
-        "TMconfig": true
-    },
     "train": {
         "class": "File",
         "location": "ftp://<ftp-server>/files/train-easy.py"
     },
-    "spark_example": {
-        "class": "File",
-        "location": "ftp://<ftp-server>/files/spark_example.jar"
-    },
+    "np": 2
 }
 ```
 
-The Figure shows the status of the Pods immediately after the end of a platformed-task that uses a Horovod platform made of two workers.
+We have defined an output file named  `horovod` that is the dump of the stdout produced by the execution of the task. 
+
+In this example, the Executor is a Container that runs the command  
+```zsh
+python3 /horovod/examples/horovod-exec.py 2 <path-of-train-file>
+```
+
+#### 2. Task Run 
+We used our `cwl-TES ` command-line tool to run a platformed-task as follows.
+
+```zsh
+python3 cwl-tes.py --remote-storage-url ftp://<ftp-server>/files/out --insecure --tes http://<k8s-plas-tesk-api> --leave-outputs tests/helm-horovod.cwl.yml tests/inputs.json
+```
+
+The Figure shows the status of the Kubernetes Jobs immediately after the end of the Horovod platformed-task.
 
 ![plas-horovod-deployment](src/plas-horovod-deployment.jpg)
 
-We can see the same random prefix (`task-5a80374a`) for all the Pods belonging to the same task. In particular, `task-5a80374a--1-k2ql8` is the taskmaster which initially deploys the input filer Pod (`task-5a80374a-inputs-filer--1-46snq`). The taskmaster installs the Horovod workers (`task-5a80374a-platform-horovod-{0,1}`) and the executor (`task-5a80374a-ex-00--1-62sg8`) that runs its tasks leveraging the Horovod workers. After the task completion, the taskmaster deletes the platform, that’s why the `Terminating` state, while the output Pod (`task-5a80374a-outputs-filer--1-rvnc2`) has saved the results on the appropriate volumes and is marked as `Completed`.
+We can see the same random prefix (`task-5a80374a`) for all the Pods belonging to the same task. In particular, `task-5a80374a--1-k2ql8` is the Taskmaster which initially runs the Input (filer) Jobs (`task-5a80374a-inputs-filer--1-46snq`). Then, the Taskmaster installs the Horovod sidecar platform (`task-5a80374a-platform-horovod-{0,1}`) and the Executor (`task-5a80374a-ex-00--1-62sg8`) that runs its tasks leveraging the Horovod workers. After the task completion, the Taskmaster deletes the platform, that’s why the `Terminating` state, while the Output Job (`task-5a80374a-outputs-filer--1-rvnc2`) has saved the results on the appropriate volumes and is marked as `Completed`.
 
 
-### Deploy a Platformed Task Using Spark
-In this second example, we will deploy a platformed task using Apache Spark. 
+### Run a Spark accelerated Machine Learning Platformed-Task
+In this second example, we will deploy a platformed-task using Apache Spark. 
 The procedure is the same as the one using Horovod.
 
 #### 1. CWL Definition
 First, let's define the CWL with the description of the platformed task in the CWL format.
-As for the Horovod version, the following CWL file can be found in the [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes.git) repository as [`PLAS-cwl-tes/tests/helm-spark.cwl.yml`](https://github.com/PlatformedTasks/PLAS-cwl-tes/blob/main/tests/helm-spark.cwl.yml):
+As for the Horovod version, the following .cwl file can be found in the [PLAS-cwl-tes](https://github.com/PlatformedTasks/PLAS-cwl-tes.git) repository as [`PLAS-cwl-tes/tests/helm-spark.cwl.yml`](https://github.com/PlatformedTasks/PLAS-cwl-tes/blob/main/tests/helm-spark.cwl.yml):
 
 ```yaml
 # tests/helm-spark.cwl.yml
 cwlVersion: v1.0
 class: CommandLineTool
 doc: "helm spark"
-requirements:
+requirementds:
+  - class: DockerRequirement
+    dockerPull: "platformedtasks/spark:latest"
   - class: HelmRequirement
     chartRepo: "https://platformedtasks.github.io/PLAS-charts/charts"
     chartVersion: "6.0.0"
     chartName: "spark"
-    executorImage: "platformedtasks/spark:latest"
 
 inputs:
   - id: spark_example
@@ -206,12 +247,13 @@ arguments: ["/opt/bitnami/spark/examples/spark-executor.py", "spark-submit --con
 
 ```
 
-#### 2. Submit the Platformed Task on Kubernetes
-Submit the CWL file to the CWL-TES to deploy it on the cluster:
-```shell
+#### 2. Task Run 
+
+```zsh
 python3 cwl-tes.py --remote-storage-url ftp://<ftp-server>/files/out --insecure --tes http://<k8s-plas-tesk-api> --leave-outputs tests/helm-spark.cwl.yml tests/inputs.json
 ```
 
-The deployment of the platformed task can be visualized using the standard Kubernetes commands: `kubectl get pods`.
+The deployment of the platformed task can be visualized using the 
+Kubernetes command: `kubectl get pods`.
 
 ![plas-horovod-deployment](src/plas-spark-deployment.jpg)
