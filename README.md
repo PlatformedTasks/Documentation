@@ -133,7 +133,7 @@ Now you should have a PLAS compatible testbed ready, continue reading to deploy 
 ### Run a Horovod accelerated Machine Learning Platformed-Task  
 
 <p align="center">
-  <img src="src/demo_horovod.gif" alt="animated" width="500" height="400"/>
+  <img src="src/demo_horovod.gif" alt="animated" width="600" height="500"/>
 </p>
 
 #### 1. CWL Definition
